@@ -1,0 +1,8 @@
+# O repo é privado, mas o deploy é público: sem isto, tudo que está no
+# repo vira URL acessível. Só a landing e seus assets devem subir.
+docs/
+.github/
+README.md
+.playwright-mcp/
+*.png
+!assets/**/*.png

@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TwinForge — A suite para operar empresas movidas a agentes de IA | AI/R</title>
+<meta name="description" content="TwinForge é a suite da AI/R para operar empresas movidas a agentes de IA: control plane, console de frota, catálogo de agentes forjados e workbench de terminal.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="TwinForge — A suite para operar empresas movidas a agentes de IA">
+<meta property="og:description" content="Control plane, console de frota, agentes forjados e Crucible CLI. Correção vem de gate determinístico. Conclusão vem de exit code.">
+<meta property="og:type" content="website">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Tipografia AI/R
+   Corpo: Neue Haas Grotesk Display Pro (licenciada, não
+   redistribuída) → fallback Helvetica Neue, nativo em macOS.
+   Títulos e dados: Roboto Mono, servida localmente.
+   ───────────────────────────────────────────────────────────── */
+@font-face{font-family:"Roboto Mono";src:url("assets/fonts/RobotoMono-Light.woff2") format("woff2");font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:"Roboto Mono";src:url("assets/fonts/RobotoMono-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Roboto Mono";src:url("assets/fonts/RobotoMono-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Roboto Mono";src:url("assets/fonts/RobotoMono-Bold.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap}
+
+/* ── Tokens ────────────────────────────────────────────────── */
+:root{
+  /* Paleta primária AI/R */
+  --ink:#0C0C0C;
+  --panel:#141414;
+  --panel-2:#181818;
+  --edge:#383838;
+  --dim:#646464;
+  --mute:#A7A7A7;
+  --text:#E9E9E9;
+  --white:#FFFFFF;
+  /* Acento único: lime do Forge AI. Reservado para o que um
+     gate determinístico confirmou — e para a ação primária. */
+  --acid:#D7EF25;
+
+  --hair:rgba(233,233,233,.10);
+  --hair-strong:rgba(233,233,233,.18);
+
+  --mono:"Roboto Mono","SF Mono","Cascadia Mono",Consolas,"Liberation Mono",monospace;
+  --sans:"Neue Haas Grotesk Display Pro","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+
+  --wrap:1180px;
+  --pad:clamp(20px,5vw,56px);
+  --sec:clamp(72px,9vw,128px);
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0}
+img,svg{display:block;max-width:100%}
+button,input{font:inherit}
+h1,h2,h3,h4,p,figure,blockquote,pre{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+a{color:inherit;text-decoration:none}
+
+/* ── Base ──────────────────────────────────────────────────── */
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:.9375rem;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+
+/* Textura granulada — guideline AI/R, §6. Suaviza a precisão
+   matemática do layout sem competir com o conteúdo. */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:200;
+  pointer-events:none;
+  opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+::selection{background:var(--acid);color:var(--ink)}
+:focus-visible{outline:2px solid var(--acid);outline-offset:3px}
+
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-inline:var(--pad)}
+
+/* ── Escala tipográfica ────────────────────────────────────── */
+.label{
+  font-family:var(--mono);
+  font-weight:500;
+  font-size:.6875rem;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--dim);
+}
+h1{
+  font-family:var(--mono);
+  font-weight:300;
+  font-size:clamp(2rem,4.6vw,4rem);
+  line-height:1.02;
+  letter-spacing:-.045em;
+  color:var(--white);
+  max-width:24ch;
+}
+h2{
+  font-family:var(--mono);
+  font-weight:300;
+  font-size:clamp(1.625rem,3.2vw,2.625rem);
+  line-height:1.08;
+  letter-spacing:-.035em;
+  color:var(--white);
+  max-width:26ch;
+}
+h3{
+  font-family:var(--mono);
+  font-weight:500;
+  font-size:1.0625rem;
+  letter-spacing:-.01em;
+  color:var(--white);
+}
+.lead{
+  font-size:clamp(1.0625rem,1.4vw,1.25rem);
+  line-height:1.55;
+  color:var(--mute);
+  max-width:56ch;
+}
+
+/* ── Faixa do evento ───────────────────────────────────────── */
+/* Bloco autocontido: remover esta <div> reaproveita a landing
+   fora do contexto do meetup. */
+.eventbar{
+  border-bottom:1px solid var(--hair);
+  background:var(--ink);
+}
+.eventbar__in{
+  display:flex;align-items:center;gap:12px;
+  min-height:38px;
+  font-family:var(--mono);font-size:.6875rem;font-weight:400;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+}
+.eventbar__dot{
+  width:5px;height:5px;flex:none;border-radius:50%;
+  background:var(--acid);
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.head{
+  position:sticky;top:0;z-index:100;
+  border-bottom:1px solid var(--hair);
+  background:rgba(12,12,12,.82);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+.head__in{
+  display:flex;align-items:center;gap:clamp(16px,3vw,40px);
+  min-height:72px;
+}
+.brand{display:flex;align-items:center;gap:16px;color:var(--white)}
+.brand svg{width:74px;height:24px;flex:none}
+.brand__tag{
+  font-family:var(--mono);font-size:.625rem;font-weight:400;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  padding-left:16px;border-left:1px solid var(--hair);
+  line-height:1.3;max-width:16ch;
+}
+.nav{display:flex;gap:28px;margin-left:auto}
+.nav a{
+  font-family:var(--mono);font-size:.75rem;font-weight:400;
+  letter-spacing:.04em;color:var(--mute);
+  padding-block:6px;
+  border-bottom:1px solid transparent;
+  transition:color .18s ease,border-color .18s ease;
+}
+.nav a:hover{color:var(--white);border-bottom-color:var(--acid)}
+
+/* ── Botões ────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:.8125rem;font-weight:500;
+  letter-spacing:.02em;
+  padding:13px 20px;
+  border:1px solid var(--hair-strong);
+  transition:background .18s ease,color .18s ease,border-color .18s ease,transform .18s ease;
+}
+.btn:hover{transform:translateY(-1px)}
+.btn--primary{background:var(--acid);color:var(--ink);border-color:var(--acid)}
+.btn--primary:hover{background:var(--white);border-color:var(--white)}
+.btn--ghost{color:var(--text)}
+.btn--ghost:hover{border-color:var(--white);color:var(--white)}
+.btn--sm{padding:9px 15px;font-size:.75rem}
+.btn__arw{font-size:1em;line-height:1}
+.head .btn{margin-left:4px}
+
+/* ── Seções ────────────────────────────────────────────────── */
+.section{padding-block:var(--sec);border-top:1px solid var(--hair)}
+.section:first-of-type{border-top:0}
+
+/* Número ligado ao título por linha fina — guideline AI/R, §6 */
+.shead{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.shead__n{
+  font-family:var(--mono);font-size:.6875rem;font-weight:500;
+  letter-spacing:.1em;color:var(--acid);
+}
+.shead__line{flex:1;max-width:88px;height:1px;background:var(--hair-strong)}
+.shead__k{
+  font-family:var(--mono);font-size:.6875rem;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--mute);
+}
+
+/* ── Hero ──────────────────────────────────────────────────── */
+.hero{padding-top:clamp(56px,7vw,92px);padding-bottom:var(--sec)}
+.hero__eyebrow{display:flex;align-items:center;gap:14px;margin-bottom:clamp(24px,4vw,40px)}
+.hero h1{margin-bottom:26px}
+.hero .lead{margin-bottom:36px}
+.hero__cta{display:flex;flex-wrap:wrap;gap:12px}
+
+/* ── Signature: o split de veredito ───────────────────────── */
+.verdict{margin-top:clamp(56px,8vw,96px)}
+.verdict__grid{
+  display:grid;
+  grid-template-columns:1fr 1.15fr;
+  border:1px solid var(--hair-strong);
+  background:var(--panel);
+}
+.verdict__col{
+  padding:clamp(22px,3vw,34px);
+  display:flex;flex-direction:column;gap:18px;
+  min-height:200px;
+}
+.verdict__col + .verdict__col{border-left:1px solid var(--hair-strong)}
+.verdict__col--gate{background:var(--panel-2)}
+.verdict__who{
+  font-family:var(--mono);font-size:.6875rem;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+}
+.verdict__col--gate .verdict__who{color:var(--acid)}
+.verdict__say{
+  font-family:var(--mono);font-weight:300;
+  font-size:clamp(1.125rem,2.1vw,1.625rem);
+  line-height:1.25;letter-spacing:-.03em;
+  color:var(--dim);
+  margin-top:auto;
+}
+.verdict__code{
+  font-family:var(--mono);font-weight:400;
+  font-size:clamp(.75rem,1.1vw,.875rem);
+  line-height:2;
+  color:var(--mute);
+  margin-top:auto;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.verdict__code .prompt{color:var(--dim)}
+.verdict__code .exit{
+  color:var(--acid);font-weight:500;
+  display:inline-block;margin-top:6px;
+}
+.verdict__foot{
+  font-family:var(--mono);font-size:.6875rem;font-weight:400;
+  letter-spacing:.05em;color:var(--dim);
+  padding-top:16px;border-top:1px solid var(--hair);
+}
+.verdict__quote{
+  margin-top:clamp(28px,4vw,44px);
+  display:grid;gap:14px;
+  max-width:72ch;
+}
+.verdict__quote p{
+  font-family:var(--mono);font-weight:300;
+  font-size:clamp(1rem,1.7vw,1.375rem);
+  line-height:1.4;letter-spacing:-.025em;
+  color:var(--text);
+}
+.verdict__quote cite{
+  font-family:var(--mono);font-size:.6875rem;font-style:normal;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.verdict__split{
+  display:flex;flex-wrap:wrap;gap:8px 32px;
+  margin-top:22px;
+  font-family:var(--mono);font-size:.8125rem;color:var(--mute);
+}
+.verdict__split b{color:var(--white);font-weight:500}
+
+/* ── Cards da suite ────────────────────────────────────────── */
+.suite{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--hair-strong);border:1px solid var(--hair-strong)}
+.card{
+  background:var(--panel);
+  padding:clamp(24px,3vw,36px);
+  display:flex;flex-direction:column;gap:18px;
+  transition:background .2s ease;
+}
+.card:hover{background:var(--panel-2)}
+.card__top{display:flex;align-items:baseline;gap:14px}
+.card__def{color:var(--mute);font-size:.9375rem}
+.card ul{display:grid;gap:11px}
+.card li{
+  position:relative;padding-left:18px;
+  font-size:.875rem;line-height:1.55;color:var(--text);
+}
+.card li::before{
+  content:"";position:absolute;left:0;top:.62em;
+  width:6px;height:1px;background:var(--dim);
+}
+.card blockquote{
+  font-family:var(--mono);font-weight:300;font-size:.875rem;
+  line-height:1.5;letter-spacing:-.01em;color:var(--mute);
+  padding-top:18px;margin-top:auto;
+  border-top:1px solid var(--hair);
+}
+.card__link{
+  font-family:var(--mono);font-size:.75rem;font-weight:500;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);
+  display:inline-flex;align-items:center;gap:8px;
+  transition:color .18s ease;
+}
+.card__link:hover{color:var(--acid)}
+.suite__foot{
+  margin-top:26px;
+  font-family:var(--mono);font-weight:300;
+  font-size:clamp(.9375rem,1.5vw,1.125rem);
+  letter-spacing:-.02em;color:var(--mute);
+}
+
+/* ── Arquitetura ───────────────────────────────────────────── */
+.arch{display:grid;grid-template-columns:1fr;gap:clamp(36px,5vw,56px)}
+.arch__diagram{
+  border:1px solid var(--hair-strong);
+  background:var(--panel);
+  padding:clamp(16px,2.5vw,28px);
+}
+.arch__diagram svg{width:100%;height:auto}
+.arch__steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair-strong);border:1px solid var(--hair-strong)}
+.step{background:var(--panel);padding:clamp(20px,2.4vw,26px);display:flex;flex-direction:column;gap:12px}
+.step__n{
+  font-family:var(--mono);font-size:.6875rem;font-weight:500;
+  letter-spacing:.1em;color:var(--acid);
+}
+.step h3{font-size:.9375rem}
+.step p{font-size:.875rem;line-height:1.55;color:var(--mute)}
+
+/* SVG do diagrama */
+.d-box{fill:#181818;stroke:rgba(233,233,233,.18)}
+.d-box--cp{fill:#1c1c1c;stroke:rgba(233,233,233,.3)}
+.d-t{font-family:var(--mono);font-size:12px;font-weight:500;fill:#FFF;letter-spacing:.04em}
+.d-s{font-family:var(--mono);font-size:10.5px;font-weight:400;fill:#A7A7A7;letter-spacing:.06em}
+.d-k{font-family:var(--mono);font-size:10px;font-weight:500;fill:#646464;letter-spacing:.16em}
+.d-k--acid{fill:#D7EF25}
+.d-flow{stroke:rgba(233,233,233,.3);stroke-width:1;fill:none}
+.d-pull{stroke:rgba(233,233,233,.22);stroke-width:1;fill:none;stroke-dasharray:3 4}
+.d-beat{stroke:#D7EF25;stroke-width:1.25;fill:none}
+.d-beat--track{stroke:rgba(215,239,37,.16);stroke-width:1.25;fill:none}
+/* O pulso percorre o caminho de retorno: o heartbeat é a única
+   animação da página, e representa exatamente o que nomeia. */
+.d-beat{stroke-dasharray:52 690;animation:beat 4.2s linear infinite}
+@keyframes beat{from{stroke-dashoffset:742}to{stroke-dashoffset:0}}
+
+/* ── Governança ────────────────────────────────────────────── */
+.gov{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--hair-strong);border:1px solid var(--hair-strong)}
+.gov__i{background:var(--panel);padding:clamp(20px,2.4vw,26px);display:flex;flex-direction:column;gap:10px}
+.gov__k{font-family:var(--mono);font-size:.8125rem;font-weight:500;letter-spacing:-.01em;color:var(--white)}
+.gov__i p{font-size:.8125rem;line-height:1.55;color:var(--mute)}
+
+/* ── Economia e outcomes ───────────────────────────────────── */
+.econ{display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,5vw,72px);align-items:start}
+.econ__body{display:grid;gap:18px}
+.econ__body p{color:var(--mute);max-width:52ch}
+.econ__ledger{border:1px solid var(--hair-strong);background:var(--panel)}
+.econ__row{
+  display:flex;align-items:baseline;justify-content:space-between;gap:20px;
+  padding:16px clamp(18px,2.2vw,24px);
+  font-family:var(--mono);font-size:.8125rem;
+}
+.econ__row + .econ__row{border-top:1px solid var(--hair)}
+.econ__role{color:var(--mute);letter-spacing:.04em}
+.econ__model{color:var(--white);font-weight:500;text-align:right}
+.econ__model--acid{color:var(--acid)}
+.outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hair-strong);border:1px solid var(--hair-strong);margin-top:clamp(36px,5vw,56px)}
+.outcome{background:var(--panel);padding:clamp(22px,2.6vw,30px);display:flex;flex-direction:column;gap:12px}
+.outcome h3{font-size:.9375rem}
+.outcome p{font-size:.875rem;line-height:1.55;color:var(--mute)}
+.note{
+  margin-top:20px;
+  font-family:var(--mono);font-size:.75rem;line-height:1.6;
+  color:var(--dim);max-width:64ch;
+  padding-left:16px;border-left:1px solid var(--hair-strong);
+}
+
+/* ── CTA de fecho ──────────────────────────────────────────── */
+.close{display:grid;gap:26px;justify-items:start;max-width:60ch}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.foot{border-top:1px solid var(--hair);padding-block:44px}
+.foot__in{display:flex;flex-wrap:wrap;align-items:center;gap:20px 32px}
+.foot .brand{color:var(--white)}
+.foot__links{display:flex;gap:24px;margin-left:auto}
+.foot__links a{
+  font-family:var(--mono);font-size:.75rem;letter-spacing:.04em;color:var(--mute);
+  transition:color .18s ease;
+}
+.foot__links a:hover{color:var(--acid)}
+.foot__c{
+  width:100%;
+  font-family:var(--mono);font-size:.6875rem;letter-spacing:.08em;
+  color:var(--dim);
+}
+
+/* ── Reveal ao entrar em tela ──────────────────────────────── */
+html.js .reveal{opacity:0;transform:translateY(14px)}
+html.js .reveal.in{opacity:1;transform:none;transition:opacity .6s ease,transform .6s ease}
+
+/* ── Responsivo ────────────────────────────────────────────── */
+@media (max-width:1040px){
+  .arch__steps{grid-template-columns:repeat(2,1fr)}
+  .gov{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:900px){
+  .nav{display:none}
+  /* Sem a nav, nada empurra o CTA para a direita. */
+  .head .btn{margin-left:auto}
+  .head__in{min-height:64px}
+  .brand__tag{display:none}
+  .suite{grid-template-columns:1fr}
+  .econ{grid-template-columns:1fr}
+  .outcomes{grid-template-columns:1fr}
+}
+/* O diagrama depende de largura para o texto de 10px ficar legível.
+   Abaixo disso, os quatro passos numerados carregam a mesma
+   informação — e o SVG traz title/desc para leitor de tela. */
+@media (max-width:1024px){
+  .arch__diagram{display:none}
+}
+@media (max-width:760px){
+  .verdict__grid{grid-template-columns:1fr}
+  .verdict__col + .verdict__col{border-left:0;border-top:1px solid var(--hair-strong)}
+  .verdict__col{min-height:0}
+}
+@media (max-width:520px){
+  .arch__steps{grid-template-columns:1fr}
+  .gov{grid-template-columns:1fr}
+  .hero__cta .btn{width:100%;justify-content:space-between}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  html.js .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ══ Faixa do evento — remover esta seção para reaproveitar a landing ══ -->
+<div class="eventbar" data-event-banner>
+  <div class="wrap eventbar__in">
+    <span class="eventbar__dot" aria-hidden="true"></span>
+    <span>Apresentado no Claude Meetup</span>
+  </div>
+</div>
+
+<header class="head">
+  <div class="wrap head__in">
+    <a class="brand" href="#top" aria-label="AI/R — Agentic AI Software Engineering">
+      <svg viewBox="0 0 99 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M70.104 4.87286C68.1387 3.28079 65.1567 3.63458 63.5844 5.60765C62.8932 6.47852 62.5814 7.48547 62.473 8.56045C62.4052 9.28164 62.1748 9.94841 61.8495 10.588C60.8194 12.6699 59.3284 14.3844 57.5392 15.854C55.4248 17.5685 53.0935 18.7524 50.3149 18.8748C49.0814 18.9293 48.0378 19.5144 47.2245 20.4533C44.839 23.1884 46.3028 27.5427 49.8405 28.2503C52.5242 28.7946 55.0724 26.9032 55.4383 24.1681C55.5332 23.4061 55.723 22.6441 56.0212 21.9365C57.3766 18.7115 59.6537 16.303 62.6628 14.6157C64.1266 13.7993 65.6853 13.3366 67.3796 13.3502C68.7757 13.3502 69.9414 12.7379 70.8224 11.6629C72.5438 9.55379 72.2185 6.58739 70.104 4.87286Z"/>
+        <path d="M37.4248 4.36939H43.6733V0.300781H27.1236V4.36939H33.3721V27.8557H27.1236V31.9243H43.6869V27.8557H37.4248V4.36939Z"/>
+        <path d="M6.11457 0.300781L0.299805 7.10447V31.9107H4.35252V19.1606H17.0799V31.9107H21.1326V7.05004L14.7215 0.300781H6.11457ZM17.0935 15.092H4.36607V8.61488L7.98505 4.36939H12.9866L17.0799 8.68292V15.092H17.0935Z"/>
+        <path d="M98.7576 7.05004L92.3465 0.300781H77.9248V31.9107H81.9775V19.1606H91.6146L94.7049 23.8551V31.9243H98.7576V22.6305L95.342 17.4597L98.7576 14.2075V7.05004ZM94.7049 12.4522L91.9399 15.092H81.9775V4.36939H90.6115L94.7049 8.68292V12.4522Z"/>
+      </svg>
+      <span class="brand__tag">Agentic AI Software Engineering</span>
+    </a>
+    <nav class="nav" aria-label="Seções">
+      <a href="#tese">Tese</a>
+      <a href="#suite">Suite</a>
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#governanca">Governança</a>
+    </nav>
+    <!-- Slot de inscrição — trocar href e rótulo quando a página de inscrição existir -->
+    <a class="btn btn--sm btn--ghost js-signup" data-signup href="https://docs.twinforge.webjump.ai/">Ler as docs <span class="btn__arw" aria-hidden="true">↗</span></a>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ══ 01 · Hero + tese ══ -->
+  <section class="section hero" id="tese">
+    <div class="wrap">
+      <div class="hero__eyebrow">
+        <span class="label">TwinForge</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="label">Suite AI/R</span>
+      </div>
+
+      <h1>A suite para operar empresas movidas a agentes de IA</h1>
+
+      <p class="lead">Digital twins. Expertise real. Desenvolvimento autônomo. Um control plane que governa agentes, um console que observa a frota, um catálogo de especialistas forjados e um workbench de terminal.</p>
+
+      <div class="hero__cta">
+        <!-- Slot de inscrição — trocar href e rótulo quando a página de inscrição existir -->
+        <a class="btn btn--primary js-signup" data-signup href="https://docs.twinforge.webjump.ai/">Ler as docs <span class="btn__arw" aria-hidden="true">↗</span></a>
+        <a class="btn btn--ghost" href="#suite">Ver a suite</a>
+      </div>
+
+      <!-- Signature: quem decide o que é "correto" e o que é "terminei" -->
+      <figure class="verdict reveal">
+        <span class="label">Fonte da verdade</span>
+        <div class="verdict__grid">
+          <div class="verdict__col">
+            <span class="verdict__who">O modelo</span>
+            <p class="verdict__say">“acho que terminei”</p>
+            <span class="verdict__foot">Opinião. Não é evidência.</span>
+          </div>
+          <div class="verdict__col verdict__col--gate">
+            <span class="verdict__who">O gate</span>
+            <pre class="verdict__code"><span class="prompt">$</span> twinforge-verify --profile apex
+evidence → .twinforge/verify/
+<span class="exit">exit 0</span></pre>
+            <span class="verdict__foot">Evidência persistente. Roda offline.</span>
+          </div>
+        </div>
+        <blockquote class="verdict__quote">
+          <p>O modelo nunca é a fonte da verdade sobre “está correto” nem sobre “terminei”.</p>
+          <cite>docs.twinforge — Agentes Forjados</cite>
+        </blockquote>
+        <p class="verdict__split">
+          <span><b>Correção</b> vem do gate determinístico.</span>
+          <span><b>Conclusão</b> vem do exit code.</span>
+        </p>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ══ 02 · A suite ══ -->
+  <section class="section" id="suite">
+    <div class="wrap">
+      <header class="shead">
+        <span class="shead__n">02</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="shead__k">A suite</span>
+      </header>
+      <h2>Quatro componentes, um sistema</h2>
+
+      <div class="suite reveal" style="margin-top:36px">
+
+        <article class="card">
+          <div class="card__top">
+            <h3>Plataforma</h3>
+            <span class="label">Control plane</span>
+          </div>
+          <p class="card__def">O software que a pessoa abre para saber, a qualquer momento, quem está trabalhando em quê, quanto custou e o que precisa da decisão dela.</p>
+          <ul>
+            <li>Companies, agents e issues como primitivas</li>
+            <li>Orçamento, fila de aprovações e trilha de auditoria</li>
+            <li>Checkout atômico impede trabalho duplicado</li>
+          </ul>
+          <blockquote>“O control plane não roda agentes. Ele os orquestra.”</blockquote>
+          <a class="card__link" href="https://docs.twinforge.webjump.ai/core/">Documentação <span aria-hidden="true">↗</span></a>
+        </article>
+
+        <article class="card">
+          <div class="card__top">
+            <h3>WatchTower</h3>
+            <span class="label">Frota</span>
+          </div>
+          <p class="card__def">O console central sobre uma frota de instâncias TwinForge. Detecta problema antes de o usuário reportar.</p>
+          <ul>
+            <li>Pull-based: puxa fleet snapshots read-only</li>
+            <li>Overview, Runs, Problems, Approvals, Drift, Costs, Audit</li>
+            <li>Três processos separados, independentes da plataforma</li>
+          </ul>
+          <blockquote>“Uma tela só, para você não precisar abrir quinze.”</blockquote>
+          <a class="card__link" href="https://docs.twinforge.webjump.ai/watchtower/">Documentação <span aria-hidden="true">↗</span></a>
+        </article>
+
+        <article class="card">
+          <div class="card__top">
+            <h3>Agentes Forjados</h3>
+            <span class="label">Catálogo</span>
+          </div>
+          <p class="card__def">Repositório Git de agentes e skills que as instâncias TwinForge referenciam. Cada agente é forjado de um especialista real da empresa — arquiteto Salesforce, dev, QA, prompt engineer.</p>
+          <ul>
+            <li>Skills em markdown, reutilizáveis entre agentes</li>
+            <li>Três famílias de agentes, com papéis e reporte definidos</li>
+            <li>Gate <code>twinforge-verify</code> por perfil: Apex, LWC, Flow</li>
+          </ul>
+          <blockquote>“Qualidade decidida por gate determinístico, não por opinião de modelo.”</blockquote>
+          <a class="card__link" href="https://docs.twinforge.webjump.ai/agentes/">Documentação <span aria-hidden="true">↗</span></a>
+        </article>
+
+        <article class="card">
+          <div class="card__top">
+            <h3>Crucible CLI</h3>
+            <span class="label">Workbench</span>
+          </div>
+          <p class="card__def">Harness de coding completo no terminal, conectado ao proxy LiteLLM interno. Custo de modelo à vista.</p>
+          <ul>
+            <li>Leitura livre; write, exec, web e MCP sob aprovação</li>
+            <li>Regras de permissão persistentes por projeto</li>
+            <li>Trust fingerprinting revalida se as settings mudam via VCS</li>
+          </ul>
+          <blockquote>“Autonomia real, mas nada acontece sem sua aprovação.”</blockquote>
+          <a class="card__link" href="https://docs.twinforge.webjump.ai/crucible/">Documentação <span aria-hidden="true">↗</span></a>
+        </article>
+
+      </div>
+
+      <p class="suite__foot">Úteis isoladamente. Desenhados para operar juntos.</p>
+    </div>
+  </section>
+
+  <!-- ══ 03 · Arquitetura ══ -->
+  <section class="section" id="arquitetura">
+    <div class="wrap">
+      <header class="shead">
+        <span class="shead__n">03</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="shead__k">Arquitetura</span>
+      </header>
+      <h2>Agentes rodam onde rodam e ligam para casa</h2>
+
+      <div class="arch" style="margin-top:36px">
+
+        <div class="arch__diagram reveal">
+          <svg viewBox="0 0 960 440" role="img" aria-labelledby="diagT diagD" preserveAspectRatio="xMidYMid meet">
+            <title id="diagT">Fluxo de execução do TwinForge</title>
+            <desc id="diagD">O control plane acorda o agente com contexto e orçamento. Um adapter traduz a chamada para o runtime, que pode ser Claude Code, Cursor, shell ou webhook. O agente devolve log, custo e evidência pelo heartbeat. O WatchTower puxa fleet snapshots read-only do control plane.</desc>
+
+            <defs>
+              <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 1 L9 5 L0 9 z" fill="rgba(233,233,233,.45)"/>
+              </marker>
+              <marker id="ar-acid" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 1 L9 5 L0 9 z" fill="#D7EF25"/>
+              </marker>
+              <marker id="ar-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 1 L9 5 L0 9 z" fill="rgba(233,233,233,.3)"/>
+              </marker>
+            </defs>
+
+            <!-- Control plane -->
+            <rect class="d-box d-box--cp" x="40" y="58" width="222" height="154"/>
+            <text class="d-k d-k--acid" x="62" y="86">CONTROL PLANE</text>
+            <text class="d-t" x="62" y="114">Plataforma</text>
+            <text class="d-s" x="62" y="140">companies · agents</text>
+            <text class="d-s" x="62" y="158">issues · budgets</text>
+            <text class="d-s" x="62" y="176">approvals · audit</text>
+
+            <!-- Control plane → adapters -->
+            <path class="d-flow" d="M262 135 H 366" marker-end="url(#ar)"/>
+            <text class="d-s" x="284" y="124">acorda</text>
+
+            <!-- Adapters -->
+            <rect class="d-box" x="378" y="104" width="148" height="62"/>
+            <text class="d-k" x="396" y="130">ADAPTER</text>
+            <text class="d-s" x="396" y="150">traduz a chamada</text>
+
+            <!-- Adapters → runtimes -->
+            <path class="d-flow" d="M526 135 C 570 135, 580 62, 626 62" marker-end="url(#ar)"/>
+            <path class="d-flow" d="M526 135 C 570 135, 580 111, 626 111" marker-end="url(#ar)"/>
+            <path class="d-flow" d="M526 135 C 570 135, 580 160, 626 160" marker-end="url(#ar)"/>
+            <path class="d-flow" d="M526 135 C 570 135, 580 209, 626 209" marker-end="url(#ar)"/>
+
+            <!-- Runtimes -->
+            <text class="d-k" x="638" y="34">RUNTIME</text>
+            <rect class="d-box" x="638" y="42" width="242" height="40"/>
+            <text class="d-t" x="656" y="67">Claude Code</text>
+            <rect class="d-box" x="638" y="91" width="242" height="40"/>
+            <text class="d-t" x="656" y="116">Cursor</text>
+            <rect class="d-box" x="638" y="140" width="242" height="40"/>
+            <text class="d-t" x="656" y="165">shell</text>
+            <rect class="d-box" x="638" y="189" width="242" height="40"/>
+            <text class="d-t" x="656" y="214">webhook</text>
+
+            <!-- Heartbeat: retorno ao control plane -->
+            <path class="d-beat--track" d="M759 229 V 262 H 152 V 216"/>
+            <path class="d-beat" d="M759 229 V 262 H 152 V 216" marker-end="url(#ar-acid)"/>
+            <rect x="392" y="250" width="176" height="24" fill="#0C0C0C"/>
+            <text class="d-k d-k--acid" x="404" y="266">HEARTBEAT →</text>
+            <text class="d-s" x="404" y="292">log · custo · evidência · decisões pendentes</text>
+
+            <!-- Pull do WatchTower -->
+            <path class="d-pull" d="M100 214 V 368 H 548" marker-end="url(#ar-dim)"/>
+            <text class="d-s" x="116" y="344">pull · read-only</text>
+
+            <!-- WatchTower -->
+            <rect class="d-box" x="560" y="336" width="320" height="66"/>
+            <text class="d-k" x="580" y="360">WATCHTOWER</text>
+            <text class="d-s" x="580" y="384">fleet snapshots de N instâncias</text>
+          </svg>
+        </div>
+
+        <ol class="arch__steps reveal">
+          <li class="step">
+            <span class="step__n">01</span>
+            <h3>O control plane acorda</h3>
+            <p>Define quando o agente é acordado, com que contexto e sob que orçamento. A issue sai em checkout atômico, então dois agentes nunca pegam a mesma.</p>
+          </li>
+          <li class="step">
+            <span class="step__n">02</span>
+            <h3>O adapter traduz</h3>
+            <p>Cada adapter é a ponte para um runtime: Claude Code, Cursor, script de shell, webhook. Trocar o runtime não muda a governança.</p>
+          </li>
+          <li class="step">
+            <span class="step__n">03</span>
+            <h3>O agente executa e liga para casa</h3>
+            <p>O agente roda no ambiente dele. Log, custo, evidência e o que exige decisão humana voltam pelo heartbeat.</p>
+          </li>
+          <li class="step">
+            <span class="step__n">04</span>
+            <h3>O WatchTower puxa o snapshot</h3>
+            <p>Read-only, de N instâncias, numa tela. O operador cancela run, aprova ou rejeita mudança e gerencia tokens sem abrir cada instância.</p>
+          </li>
+        </ol>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 04 · Governança ══ -->
+  <section class="section" id="governanca">
+    <div class="wrap">
+      <header class="shead">
+        <span class="shead__n">04</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="shead__k">Governança</span>
+      </header>
+      <h2>O que o operador controla</h2>
+
+      <div class="gov reveal" style="margin-top:36px">
+        <div class="gov__i">
+          <span class="gov__k">Orçamento</span>
+          <p>Teto por agente e por company. O control plane recusa o que passa.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Aprovações</span>
+          <p>Fila explícita. O que exige decisão humana espera pela decisão humana.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Checkout atômico</span>
+          <p>Duas instâncias de agente nunca assumem a mesma issue.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Drift</span>
+          <p>Divergência entre o esperado e o que está rodando, detectada antes do report.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Custo</span>
+          <p>Agregado por run, por agente e por instância, na mesma tela.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Auditoria</span>
+          <p>Trilha de quem fez o quê, quando e por quanto.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Multi-company</span>
+          <p>Várias empresas na mesma instância, isoladas entre si.</p>
+        </div>
+        <div class="gov__i">
+          <span class="gov__k">Permissões no CLI</span>
+          <p>Write, exec, web e MCP sob aprovação. Trust fingerprinting revalida se as settings mudam.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 05 · Economia e outcomes ══ -->
+  <section class="section">
+    <div class="wrap">
+      <header class="shead">
+        <span class="shead__n">05</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="shead__k">Consequência</span>
+      </header>
+
+      <div class="econ" style="margin-top:8px">
+        <div class="econ__body">
+          <h2>O gate determinístico muda a conta</h2>
+          <p>Se a correção não depende da opinião do modelo, o papel mecânico não precisa do modelo mais caro. Dev e QA rodam em modelos menores. Os modelos fortes ficam reservados para julgamento.</p>
+          <p>Autonomia sem supervisão humana, porém, não se resolve só com skill: depende de oito capacidades da plataforma, documentadas separadamente do catálogo.</p>
+        </div>
+        <div class="econ__ledger reveal">
+          <div class="econ__row">
+            <span class="econ__role">Papel mecânico — Dev, QA</span>
+            <span class="econ__model">modelo menor</span>
+          </div>
+          <div class="econ__row">
+            <span class="econ__role">Julgamento — arquitetura, revisão</span>
+            <span class="econ__model econ__model--acid">modelo forte</span>
+          </div>
+          <div class="econ__row">
+            <span class="econ__role">Veredito de correção</span>
+            <span class="econ__model econ__model--acid">gate, não modelo</span>
+          </div>
+          <div class="econ__row">
+            <span class="econ__role">Sinal de conclusão</span>
+            <span class="econ__model econ__model--acid">exit code</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="outcomes reveal">
+        <article class="outcome">
+          <span class="label">Revenue Growth</span>
+          <h3>Capacidade de entrega</h3>
+          <p>Uma frota de agentes governada por orçamento e aprovação escala entrega sem escalar coordenação manual.</p>
+        </article>
+        <article class="outcome">
+          <span class="label">Operational Excellence</span>
+          <h3>Custo sob controle</h3>
+          <p>Trabalho mecânico em modelos menores, custo agregado por run e teto imposto pelo control plane.</p>
+        </article>
+        <article class="outcome">
+          <span class="label">Customer Experience</span>
+          <h3>Entrega previsível</h3>
+          <p>Gate determinístico antes do merge e drift detectado antes de o cliente reportar.</p>
+        </article>
+      </div>
+
+      <p class="note">As três afirmações acima descrevem capacidade da plataforma, não benchmark. A documentação do TwinForge não publica métricas de resultado, e AI/R não apresenta número que não meça.</p>
+    </div>
+  </section>
+
+  <!-- ══ 06 · Fecho ══ -->
+  <section class="section">
+    <div class="wrap close">
+      <header class="shead" style="margin-bottom:0">
+        <span class="shead__n">06</span>
+        <span class="shead__line" aria-hidden="true"></span>
+        <span class="shead__k">TwinForge em operação</span>
+      </header>
+      <h2>A documentação cobre a suite inteira</h2>
+      <p class="lead">Control plane, frota, catálogo de agentes forjados e Crucible CLI — com os contratos, os gates e as capacidades que faltam para autonomia plena.</p>
+      <!-- Slot de inscrição — trocar href e rótulo quando a página de inscrição existir -->
+      <a class="btn btn--primary js-signup" data-signup href="https://docs.twinforge.webjump.ai/">Ler as docs <span class="btn__arw" aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__in">
+    <a class="brand" href="#top" aria-label="AI/R">
+      <svg viewBox="0 0 99 32" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M70.104 4.87286C68.1387 3.28079 65.1567 3.63458 63.5844 5.60765C62.8932 6.47852 62.5814 7.48547 62.473 8.56045C62.4052 9.28164 62.1748 9.94841 61.8495 10.588C60.8194 12.6699 59.3284 14.3844 57.5392 15.854C55.4248 17.5685 53.0935 18.7524 50.3149 18.8748C49.0814 18.9293 48.0378 19.5144 47.2245 20.4533C44.839 23.1884 46.3028 27.5427 49.8405 28.2503C52.5242 28.7946 55.0724 26.9032 55.4383 24.1681C55.5332 23.4061 55.723 22.6441 56.0212 21.9365C57.3766 18.7115 59.6537 16.303 62.6628 14.6157C64.1266 13.7993 65.6853 13.3366 67.3796 13.3502C68.7757 13.3502 69.9414 12.7379 70.8224 11.6629C72.5438 9.55379 72.2185 6.58739 70.104 4.87286Z"/>
+        <path d="M37.4248 4.36939H43.6733V0.300781H27.1236V4.36939H33.3721V27.8557H27.1236V31.9243H43.6869V27.8557H37.4248V4.36939Z"/>
+        <path d="M6.11457 0.300781L0.299805 7.10447V31.9107H4.35252V19.1606H17.0799V31.9107H21.1326V7.05004L14.7215 0.300781H6.11457ZM17.0935 15.092H4.36607V8.61488L7.98505 4.36939H12.9866L17.0799 8.68292V15.092H17.0935Z"/>
+        <path d="M98.7576 7.05004L92.3465 0.300781H77.9248V31.9107H81.9775V19.1606H91.6146L94.7049 23.8551V31.9243H98.7576V22.6305L95.342 17.4597L98.7576 14.2075V7.05004ZM94.7049 12.4522L91.9399 15.092H81.9775V4.36939H90.6115L94.7049 8.68292V12.4522Z"/>
+      </svg>
+      <span class="brand__tag">Agentic AI Software Engineering</span>
+    </a>
+    <div class="foot__links">
+      <a href="https://docs.twinforge.webjump.ai/">docs.twinforge <span aria-hidden="true">↗</span></a>
+      <a href="https://aircompany.ai/">aircompany.ai <span aria-hidden="true">↗</span></a>
+    </div>
+    <span class="foot__c">AI/R — Agentic AI Software Engineering</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || !("IntersectionObserver" in window)) return;
+
+  document.documentElement.classList.add("js");
+
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (!e.isIntersecting) return;
+      e.target.classList.add("in");
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+
+  document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+})();
+</script>
+
+</body>
+</html>

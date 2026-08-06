@@ -52,6 +52,35 @@ Para ligar a página de inscrição, trocar `href` **e** rótulo nos três ponto
 O bloco `[data-event-banner]` no topo diz "Apresentado no Claude Meetup".
 Remover essa `<div>` reaproveita a landing fora do contexto do meetup.
 
+## Deploy
+
+Push na `main` publica em produção. PR ganha uma preview URL, comentada no
+próprio PR. Produção: https://twinforge-landing-claude-meetup.vercel.app
+
+O deploy roda por GitHub Actions (`.github/workflows/deploy.yml`), não pela
+integração nativa do Vercel: repo privado de organização exige plano Pro, e o
+projeto está numa conta Hobby.
+
+Secrets necessários no repo:
+
+| Secret | O que é |
+|---|---|
+| `VERCEL_TOKEN` | Token de escopo **de time** (`All Projects`). Escopo de projeto **não** funciona — a CLI toca recurso de nível de time no `vercel pull` e o token de projeto nega. |
+| `VERCEL_ORG_ID` | `orgId` de `.vercel/project.json` |
+| `VERCEL_PROJECT_ID` | `projectId` de `.vercel/project.json` |
+
+Para publicar à mão, sem passar pelo CI:
+
+```sh
+vercel deploy --prod
+```
+
+### O que vai para o ar
+
+`.vercelignore` mantém `docs/`, `.github/` e este README fora do deploy. O repo
+é privado, mas o deploy é público — sem esse arquivo, tudo que está na pasta
+vira URL acessível.
+
 ## Referência
 
 O design está documentado em

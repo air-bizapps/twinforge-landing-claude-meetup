@@ -11,9 +11,9 @@
 set -euo pipefail
 
 REPO=air-bizapps/twinforge-landing-claude-meetup
-COMPANY=f930c492-ba11-418d-92ad-35d8da535094
-PROJECT=d462fe49-6a05-48ec-b052-0ef49f059622
-AGENT=f4becfe9-e320-472e-b4da-6b9d6b3e21e7   # Facade
+COMPANY=cb4dfcc9-c813-4467-840c-024e58fba334
+PROJECT=1839275a-cc2f-443c-ab52-5cce1eed40d8
+AGENT=b1a6895f-25c8-4c59-aad2-f7ea3338a95f   # Facade (Claude Meetup POA)
 
 tf() {
   env -u PAPERCLIP_API_KEY -u PAPERCLIP_API_URL -u PAPERCLIP_COMPANY_ID \
@@ -23,7 +23,10 @@ tf() {
 
 echo "== limpando a rodada anterior =="
 
-for pr in $(gh pr list --repo "$REPO" --state open --json number --jq '.[].number'); do
+# So PRs de ensaio. Um PR de demo (demo/*) nao pode ser fechado por engano:
+# ele e o artefato que sustenta a apresentacao se a instancia estiver fora.
+for pr in $(gh pr list --repo "$REPO" --state open --json number,headRefName \
+              --jq '.[] | select(.headRefName | startswith("ensaio/")) | .number'); do
   echo "  fechando PR #$pr"
   gh pr close "$pr" --repo "$REPO" --delete-branch >/dev/null 2>&1 || true
 done
@@ -39,13 +42,17 @@ if [ "${1:-}" = "--clean" ]; then
   exit 0
 fi
 
-BRANCH="ensaio/$(date +%H%M%S)-contraste"
+STAMP="$(date +%H%M%S)"
+BRANCH="ensaio/$STAMP-contraste"
 
 echo
 echo "== criando tarefa (branch $BRANCH) =="
 
+# O titulo precisa ser unico: issue create deduplica por titulo dentro do
+# projeto e devolveria a tarefa da rodada anterior, ja concluida, fazendo o
+# ensaio "passar" em segundos sem ter rodado nada.
 ISSUE_JSON=$(tf issue create -C "$COMPANY" \
-  --title "Corrigir contraste WCAG AA da landing" \
+  --title "Corrigir contraste WCAG AA da landing ($STAMP)" \
   --description "O gate scripts/check-contrast.mjs esta reprovando. Deixe-o verde.
 
 Passos:

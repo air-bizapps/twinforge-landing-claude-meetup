@@ -503,17 +503,17 @@ html.js .reveal.in{opacity:1;transform:none;transition:opacity .6s ease,transfor
         <a class="btn btn--ghost" href="#suite">Ver a suite</a>
       </div>
 
-      <!-- Signature: quem decide o que é "correto" e o que é "terminei" -->
+      <!-- Signature: como o agente comprova "correto" e "terminei" -->
       <figure class="verdict reveal">
         <span class="label">Fonte da verdade</span>
         <div class="verdict__grid">
           <div class="verdict__col">
-            <span class="verdict__who">O modelo</span>
+            <span class="verdict__who">Sem gate</span>
             <p class="verdict__say">“acho que terminei”</p>
-            <span class="verdict__foot">Opinião. Não é evidência.</span>
+            <span class="verdict__foot">Autorrelato. Não deixa rastro.</span>
           </div>
           <div class="verdict__col verdict__col--gate">
-            <span class="verdict__who">O gate</span>
+            <span class="verdict__who">Com gate</span>
             <pre class="verdict__code"><span class="prompt">$</span> twinforge-verify --profile apex
 evidence → .twinforge/verify/
 <span class="exit">exit 0</span></pre>
@@ -521,8 +521,7 @@ evidence → .twinforge/verify/
           </div>
         </div>
         <blockquote class="verdict__quote">
-          <p>O modelo nunca é a fonte da verdade sobre “está correto” nem sobre “terminei”.</p>
-          <cite>docs.twinforge — Agentes Forjados</cite>
+          <p>Um agente com gate não precisa que você acredite nele: ele comprova.</p>
         </blockquote>
         <p class="verdict__split">
           <span><b>Correção</b> vem do gate determinístico.</span>
@@ -585,7 +584,7 @@ evidence → .twinforge/verify/
             <li>Três famílias de agentes, com papéis e reporte definidos</li>
             <li>Gate <code>twinforge-verify</code> por perfil: Apex, LWC, Flow</li>
           </ul>
-          <blockquote>“Qualidade decidida por gate determinístico, não por opinião de modelo.”</blockquote>
+          <blockquote>“Qualidade decidida por gate determinístico, com evidência a cada run.”</blockquote>
           <a class="card__link" href="https://docs.twinforge.webjump.ai/agentes/">Documentação <span aria-hidden="true">↗</span></a>
         </article>
 
@@ -777,7 +776,7 @@ evidence → .twinforge/verify/
       <div class="econ" style="margin-top:8px">
         <div class="econ__body">
           <h2>O gate determinístico muda a conta</h2>
-          <p>Se a correção não depende da opinião do modelo, o papel mecânico não precisa do modelo mais caro. Dev e QA rodam em modelos menores. Os modelos fortes ficam reservados para julgamento.</p>
+          <p>Se a correção é comprovada pelo gate, o papel mecânico não precisa do modelo mais caro. Dev e QA rodam em modelos menores. Os modelos fortes ficam reservados para julgamento.</p>
           <p>Autonomia sem supervisão humana, porém, não se resolve só com skill: depende de oito capacidades da plataforma, documentadas separadamente do catálogo.</p>
         </div>
         <div class="econ__ledger reveal">
@@ -791,7 +790,7 @@ evidence → .twinforge/verify/
           </div>
           <div class="econ__row">
             <span class="econ__role">Veredito de correção</span>
-            <span class="econ__model econ__model--acid">gate, não modelo</span>
+            <span class="econ__model econ__model--acid">gate determinístico</span>
           </div>
           <div class="econ__row">
             <span class="econ__role">Sinal de conclusão</span>

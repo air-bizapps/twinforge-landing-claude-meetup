@@ -54,6 +54,11 @@ const PAIRS = [
   { el: ".verdict__foot", fg: "dim", bg: "panel" },
   { el: ".verdict__foot (col--gate)", fg: "dim", bg: "panel-2" },
   { el: ".verdict__code .prompt", fg: "dim", bg: "panel" },
+  // Rotulos do diagrama de arquitetura (.d-k). Herdam --dim via fill.
+  // Os que ficam sobre o fundo do .arch__diagram (--panel) e os que
+  // caem dentro de um .d-box (--panel-2).
+  { el: ".d-k (fundo diagrama)", fg: "dim", bg: "panel" },
+  { el: ".d-k (dentro do d-box)", fg: "dim", bg: "panel-2" },
   { el: "corpo", fg: "text", bg: "ink" },
   { el: "secundario", fg: "mute", bg: "ink" },
   { el: "secundario em card", fg: "mute", bg: "panel" },

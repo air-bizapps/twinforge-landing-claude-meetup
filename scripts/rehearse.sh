@@ -11,9 +11,9 @@
 set -euo pipefail
 
 REPO=air-bizapps/twinforge-landing-claude-meetup
-COMPANY=cb4dfcc9-c813-4467-840c-024e58fba334
-PROJECT=1839275a-cc2f-443c-ab52-5cce1eed40d8
-AGENT=b1a6895f-25c8-4c59-aad2-f7ea3338a95f   # Facade (Claude Meetup POA)
+COMPANY=7ab9ce90-1f50-4a57-bab7-92fbce701fe0
+PROJECT=e27d1a5d-25b6-4f08-bbd9-600a97e4d8a4
+AGENT=f4e7bad9-e056-4c55-9206-551972775f24   # ARIAne (POA Claude Meetup)
 
 tf() {
   env -u PAPERCLIP_API_KEY -u PAPERCLIP_API_URL -u PAPERCLIP_COMPANY_ID \
@@ -37,6 +37,28 @@ for br in $(git ls-remote --heads origin 'refs/heads/ensaio/*' | awk '{print $2}
   git push -q origin --delete "$br" 2>/dev/null || true
 done
 
+# Tarefas de rodadas anteriores viram ruido no board — e o board aparece na
+# gravacao. Cancela so as de correcao; a auditoria tem outro titulo e fica.
+OLD_IDS=$(tf issue list -C "$COMPANY" --project-id "$PROJECT" --json 2>/dev/null \
+  | python3 -c '
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+items = data if isinstance(data, list) else data.get("items", [])
+for i in items:
+    if i.get("title", "").startswith("Corrigir o contraste apontado na auditoria") \
+       and i.get("status") not in ("cancelled", "done"):
+        print(i["id"])
+')
+
+for id in $OLD_IDS; do
+  ref=$(tf issue update "$id" --status cancelled --json 2>/dev/null \
+        | python3 -c 'import json,sys; print(json.load(sys.stdin)["identifier"])' 2>/dev/null || echo "$id")
+  echo "  cancelando $ref"
+done
+
 if [ "${1:-}" = "--clean" ]; then
   echo "limpo."
   exit 0
@@ -52,25 +74,26 @@ echo "== criando tarefa (branch $BRANCH) =="
 # projeto e devolveria a tarefa da rodada anterior, ja concluida, fazendo o
 # ensaio "passar" em segundos sem ter rodado nada.
 ISSUE_JSON=$(tf issue create -C "$COMPANY" \
-  --title "Corrigir contraste WCAG AA da landing ($STAMP)" \
-  --description "O gate scripts/check-contrast.mjs esta reprovando. Deixe-o verde.
+  --title "Corrigir o contraste apontado na auditoria ($STAMP)" \
+  --description "A auditoria da POA-2 encontrou 13 combinacoes de texto e fundo abaixo do minimo WCAG AA de 4.5:1 para texto normal, todas originadas do token --dim (#646464).
 
-Passos:
+Contexto do repositorio: pagina estatica, index.html unico com CSS inline, sem build step. As cores vivem como custom properties no :root. O repo tem uma verificacao em scripts/check-contrast.mjs que le os tokens e mede todos os pares que a pagina renderiza, incluindo estados de hover.
+
+Preparacao:
 
   git fetch origin
   git checkout -B $BRANCH origin/demo/base
-  node scripts/check-contrast.mjs
 
-O gate le os tokens direto do index.html e checa todos os pares texto/fundo que a pagina renderiza, incluindo estados de hover. Ele vai reprovar 13 pares, todos no token --dim.
-
-NAO calcule contraste manualmente. Ajuste o token, rode o gate de novo, repita ate a saida dizer 'Gate verde'. Nao decida por inspecao visual e nao redigite numeros.
-
-Restricoes: identidade grayscale, nao toque no --acid, CSS continua inline, sem build step, sem recurso externo.
+Criterio de aceite:
+- Nenhuma combinacao de texto normal abaixo de 4.5:1.
+- A verificacao do repo sai com codigo 0.
+- Identidade grayscale mantida, sem matiz.
+- O token --acid permanece intocado.
+- CSS continua inline, sem build step e sem recurso externo.
 
 Entrega:
-- commit no branch $BRANCH
-- push
-- PR contra a main, com a saida LITERAL do gate colada no corpo
+- commit no branch $BRANCH e push
+- PR contra a main, com a saida da verificacao no corpo
 - comentario aqui com a URL do PR, tarefa em in_review" \
   --status todo --priority high \
   --project-id "$PROJECT" \
@@ -82,7 +105,7 @@ ISSUE_REF=$(printf '%s' "$ISSUE_JSON" | python3 -c 'import json,sys; print(json.
 echo "  $ISSUE_REF  ($ISSUE_ID)"
 
 echo
-echo "== acordando o Facade =="
+echo "== acordando a ARIAne =="
 tf agent wake "$AGENT" -C "$COMPANY" --json >/dev/null
 START=$(date +%s)
 
